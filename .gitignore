@@ -1,0 +1,7 @@
+# binaries
+/keystone
+*.test
+
+# coverage and profiling output
+cover.out
+*.prof
