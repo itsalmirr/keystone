@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/mod/sumdb/tlog"
 
-	klog "github.com/itsalmirr/keystone/log"
+	"github.com/itsalmirr/keystone/keylog"
 	"github.com/itsalmirr/keystone/storage"
 )
 
@@ -37,7 +37,7 @@ func mustAppend(t *testing.T, s *storage.FileStore, data string) int64 {
 func chainOf(payloads ...string) tlog.Hash {
 	var h tlog.Hash
 	for _, p := range payloads {
-		h = klog.ChainHash(h, []byte(p))
+		h = keylog.ChainHash(h, []byte(p))
 	}
 	return h
 }

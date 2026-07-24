@@ -1,4 +1,4 @@
-package log
+package keylog
 
 import (
 	"crypto/sha256"

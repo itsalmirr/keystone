@@ -5,7 +5,7 @@
 
 ## Context
 
-Keystone is a tamper-evident, append-only log: a Go library (`log/`,
+Keystone is a tamper-evident, append-only log: a Go library (`keylog/`,
 `storage/`) and a CLI (`keystone`). It records opaque byte entries and
 lets a verifier detect after the fact whether committed entries were
 modified, deleted, or reordered.
@@ -79,7 +79,7 @@ the current log against that head.
 - The hashed leaf content contains entry bytes only; chain metadata
   lives in record framing so the Aug 2026 Merkle swap consumes July's
   leaves byte-for-byte (ADR-001).
-- `log/` stays deterministic and I/O-free; everything effectful sits
+- `keylog/` stays deterministic and I/O-free; everything effectful sits
   behind `storage/` interfaces. This is what makes the verifier
   trustworthy and the internals replaceable.
 - The verify exit-code contract (0/1/2) is public API from the first

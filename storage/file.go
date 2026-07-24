@@ -14,7 +14,7 @@ import (
 
 	"golang.org/x/mod/sumdb/tlog"
 
-	"github.com/itsalmirr/keystone/log"
+	"github.com/itsalmirr/keystone/keylog"
 )
 
 // fileMagic identifies a keystone log file and pins its format version.
@@ -153,7 +153,7 @@ func (s *FileStore) recover() error {
 		if _, err := io.ReadFull(br, stored[:]); err != nil {
 			return err
 		}
-		if stored != log.ChainHash(prev, payload) {
+		if stored != keylog.ChainHash(prev, payload) {
 			return &CorruptError{
 				Index:  int64(len(s.offsets)),
 				Off:    off,
@@ -193,7 +193,7 @@ func (s *FileStore) Append(ctx context.Context, data []byte) (int64, error) {
 		return 0, fmt.Errorf("storage: store is stopped after earlier write failure: %w", s.werr)
 	}
 
-	next := log.ChainHash(s.head, data)
+	next := keylog.ChainHash(s.head, data)
 	frame := make([]byte, frameLen(int64(len(data))))
 	binary.BigEndian.PutUint32(frame[:4], uint32(len(data)))
 	copy(frame[4:], data)

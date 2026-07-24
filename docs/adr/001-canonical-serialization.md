@@ -46,7 +46,7 @@ The hashed leaf is exactly the caller's entry bytes. No index, no
 timestamp, no `prev_hash`, no framing. Chain metadata lives in the
 storage record around the leaf, never inside it. Consequence: the
 Aug 2026 Merkle tree hashes July's leaves byte-for-byte — the swap is
-internal to `log/` with zero data migration.
+internal to `keylog/` with zero data migration.
 
 ### 4. Canonical encoding for any multi-field hashed structure
 
@@ -83,7 +83,7 @@ invariant, not an intention.
 
 ## Consequences
 
-- `log/` hashing is implementable directly against `sumdb/tlog`
+- `keylog/` hashing is implementable directly against `sumdb/tlog`
   helpers, and October's tile storage reuses the same hashes.
 - Changing anything in this document is defined as creating a new,
   incompatible log format. There is no in-place migration path, by
