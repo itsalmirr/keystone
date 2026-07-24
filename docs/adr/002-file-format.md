@@ -47,6 +47,11 @@ record := len(uint32, big-endian) payload chain   (chain: 32 bytes)
   numbers rather than adopted speculatively.
 - The parent directory is fsynced when a log file is created, so the
   file itself survives a crash immediately after creation.
+- Platform caveat: on macOS, `fsync` only guarantees the data reached
+  the drive's cache; full power-loss durability needs `F_FULLFSYNC` at
+  a large throughput cost. v1 accepts each platform's `fsync` semantics
+  and documents this rather than special-casing Darwin; revisit if the
+  log ever gates on single-machine power-loss guarantees.
 - Fail-stop: after any write or fsync error the store refuses further
   appends (reads still work). Reopening runs recovery.
 
