@@ -112,10 +112,11 @@ func (s *FileStore) recover() error {
 	}
 
 	var (
-		prev tlog.Hash
-		off  = hdrLen
-		torn = false
-		br   = bufio.NewReaderSize(io.NewSectionReader(s.f, hdrLen, size-hdrLen), 1<<16)
+		prev    tlog.Hash
+		off     = hdrLen
+		torn    = false
+		payload []byte // reused across records; ChainHash does not retain it
+		br      = bufio.NewReaderSize(io.NewSectionReader(s.f, hdrLen, size-hdrLen), 1<<16)
 	)
 	for {
 		var lenBuf [4]byte
@@ -141,7 +142,10 @@ func (s *FileStore) recover() error {
 			torn = true // payload or chain hash cut short
 			break
 		}
-		payload := make([]byte, plen)
+		if int(plen) > cap(payload) {
+			payload = make([]byte, plen)
+		}
+		payload = payload[:plen]
 		if _, err := io.ReadFull(br, payload); err != nil {
 			return err
 		}
