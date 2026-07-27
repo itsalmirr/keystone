@@ -127,19 +127,34 @@ func TestTornTailIsTruncated(t *testing.T) {
 			}
 
 			s = mustOpen(t, path)
-			defer s.Close()
 			if n, _ := s.Size(ctx); n != 2 {
 				t.Fatalf("Size after torn-tail recovery = %d, want 2", n)
+			}
+			// The torn bytes must be gone from disk, not just ignored:
+			// header (16) + "alpha" frame (41) + "beta" frame (40).
+			if fi, _ := os.Stat(path); fi.Size() != 16+41+40 {
+				t.Fatalf("file size after recovery = %d, want %d", fi.Size(), 16+41+40)
 			}
 			if got, err := s.ReadLeaf(ctx, 1); err != nil || string(got) != "beta" {
 				t.Fatalf("ReadLeaf(1) = %q, %v", got, err)
 			}
-			// The log must accept appends again after recovery.
+			// The log must accept appends again, and the appended record
+			// must be durable and readable across a reopen.
 			if idx := mustAppend(t, s, "delta"); idx != 2 {
 				t.Fatalf("Append after recovery returned index %d, want 2", idx)
 			}
+			if got, err := s.ReadLeaf(ctx, 2); err != nil || string(got) != "delta" {
+				t.Fatalf("ReadLeaf(2) after recovery = %q, %v", got, err)
+			}
+			s.Close()
+
+			s = mustOpen(t, path)
+			defer s.Close()
+			if n, _ := s.Size(ctx); n != 3 {
+				t.Fatalf("Size after reopen = %d, want 3", n)
+			}
 			if got, want := s.Head(), chainOf("alpha", "beta", "delta"); got != want {
-				t.Fatalf("Head after recovery = %x, want %x", got, want)
+				t.Fatalf("Head after reopen = %x, want %x", got, want)
 			}
 		})
 	}
@@ -203,5 +218,37 @@ func TestAppendRejectsOversizedRecord(t *testing.T) {
 	defer s.Close()
 	if _, err := s.Append(context.Background(), make([]byte, storage.MaxRecordSize+1)); err == nil {
 		t.Fatal("Append over MaxRecordSize succeeded, want error")
+	}
+}
+
+// TestMaxRecordSizeBoundary covers the recover-side of the limit, which
+// byte-mutation fuzzing cannot reach: a record of exactly MaxRecordSize
+// is legal and must survive reopen, while a length field one past the
+// limit is corruption, not a torn tail.
+func TestMaxRecordSizeBoundary(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "test.log")
+	s := mustOpen(t, path)
+	big := bytes.Repeat([]byte{0xA5}, storage.MaxRecordSize)
+	if _, err := s.Append(ctx, big); err != nil {
+		t.Fatalf("Append(MaxRecordSize): %v", err)
+	}
+	s.Close()
+
+	s = mustOpen(t, path)
+	defer s.Close()
+	if got, err := s.ReadLeaf(ctx, 0); err != nil || !bytes.Equal(got, big) {
+		t.Fatalf("MaxRecordSize record did not survive reopen: %v", err)
+	}
+
+	// Oversized length field: header + len(MaxRecordSize+1) + junk.
+	over := filepath.Join(t.TempDir(), "over.log")
+	frame := append([]byte("keystone-log-v1\n"), 0x01, 0x00, 0x00, 0x01, 'x')
+	if err := os.WriteFile(over, frame, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var ce *storage.CorruptError
+	if _, err := storage.Open(over); !errors.As(err, &ce) {
+		t.Fatalf("Open with oversized length = %v, want *CorruptError", err)
 	}
 }
